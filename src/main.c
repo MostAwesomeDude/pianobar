@@ -243,6 +243,15 @@ int main (int argc, char **argv) {
 
 						player.gain = playlist->fileGain;
 						player.audioFormat = playlist->audioFormat;
+
+						/* Setup dump directories. */
+						sprintf(player.dump_filename, "%s", playlist->artist);
+						mkdir(player.dump_filename, S_IRWXU | S_IRWXG);
+						strcat(player.dump_filename, "/");
+						strcat(player.dump_filename, playlist->album);
+						mkdir(player.dump_filename, S_IRWXU | S_IRWXG);
+						strcat(player.dump_filename, "/");
+						strcat(player.dump_filename, playlist->title);
 			
 						/* throw event */
 						BarUiStartEventCmd (&settings, "songstart", curStation,

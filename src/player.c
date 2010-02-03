@@ -308,6 +308,10 @@ static char BarPlayerMp3Cb (void *ptr, size_t size, void *stream) {
 
 	QUIT_PAUSE_CHECK;
 
+	if (player->dump_handle != NULL) {
+		fwrite(data, size, 1, player->dump_handle);
+	}
+
 	if (!BarPlayerBufferFill (player, data, size)) {
 		return 0;
 	}
@@ -426,6 +430,8 @@ void *BarPlayerThread (void *data) {
 		    conf->downMatrix = 1;
 			NeAACDecSetConfiguration(player->aacHandle, conf);
 
+			strcat(player->dump_filename, ".aac");
+
 			player->waith.callback = BarPlayerAACCb;
 			break;
 		#endif /* ENABLE_FAAD */
@@ -437,6 +443,8 @@ void *BarPlayerThread (void *data) {
 			mad_frame_init (&player->mp3Frame);
 			mad_synth_init (&player->mp3Synth);
 
+			strcat(player->dump_filename, ".mp3");
+
 			player->waith.callback = BarPlayerMp3Cb;
 			break;
 		#endif /* ENABLE_MAD */
@@ -445,6 +453,13 @@ void *BarPlayerThread (void *data) {
 			BarUiMsg (MSG_ERR, PACKAGE ": Unsupported audio format!\n");
 			return NULL;
 			break;
+	}
+
+	/* If we can read the file, then it already exists so don't re-write. */
+	if (access(player->dump_filename, R_OK) != 0) {
+		player->dump_handle = fopen(player->dump_filename, "w");
+	} else {
+		player->dump_handle = NULL;
 	}
 	
 	player->mode = PLAYER_INITIALIZED;
@@ -477,6 +492,10 @@ void *BarPlayerThread (void *data) {
 		default:
 			/* this should never happen: thread is aborted above */
 			break;
+	}
+	if (player->dump_handle != NULL) {
+		fclose(player->dump_handle);
+        player->dump_handle = NULL;
 	}
 	if (player->aoError) {
 		ret = (void *) 0x1;
