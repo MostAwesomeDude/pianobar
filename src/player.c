@@ -454,13 +454,6 @@ void *BarPlayerThread (void *data) {
 			return NULL;
 			break;
 	}
-
-	/* If we can read the file, then it already exists so don't re-write. */
-	if (access(player->dump_filename, R_OK) != 0) {
-		player->dump_handle = fopen(player->dump_filename, "w");
-	} else {
-		player->dump_handle = NULL;
-	}
 	
 	player->mode = PLAYER_INITIALIZED;
 

@@ -51,6 +51,62 @@ THE SOFTWARE.
 #include "ui_act.h"
 #include "ui_readline.h"
 
+static void prepare_dump_name(char *dump_name, PianoSong_t *song) {
+	char *artist, *album, *title, *next_slash;
+
+	artist = strdup(song->artist);
+	album = strdup(song->album);
+	title = strdup(song->title);
+
+    next_slash = strchr(artist, '/');
+	while (next_slash != NULL) {
+		*next_slash = '_';
+        next_slash = strchr(artist, '/');
+	}
+
+    next_slash = strchr(album, '/');
+	while (next_slash != NULL) {
+		*next_slash = '_';
+        next_slash = strchr(album, '/');
+	}
+
+    next_slash = strchr(title, '/');
+	while (next_slash != NULL) {
+		*next_slash = '_';
+        next_slash = strchr(title, '/');
+	}
+
+    strcpy(dump_name, "dumps/");
+	strcat(dump_name, artist);
+	mkdir(dump_name, S_IRWXU | S_IRWXG);
+	strcat(dump_name, "/");
+	strcat(dump_name, album);
+	mkdir(dump_name, S_IRWXU | S_IRWXG);
+	strcat(dump_name, "/");
+	strcat(dump_name, title);
+
+	switch (song->audioFormat) {
+		#ifdef ENABLE_FAAD
+		case PIANO_AF_AACPLUS:
+			strcat(dump_name, ".aac");
+			break;
+		#endif
+		#ifdef ENABLE_MAD
+		case PIANO_AF_MP3:
+		case PIANO_AF_MP3_HI:
+			strcat(dump_name, ".mp3");
+			break;
+		#endif
+		default:
+			strcat(dump_name, ".dump");
+			break;
+	}
+
+	free(artist);
+	free(album);
+	free(title);
+}
+
 int main (int argc, char **argv) {
 	/* handles */
 	PianoHandle_t ph;
@@ -245,13 +301,17 @@ int main (int argc, char **argv) {
 						player.audioFormat = playlist->audioFormat;
 
 						/* Setup dump directories. */
-						sprintf(player.dump_filename, "%s", playlist->artist);
-						mkdir(player.dump_filename, S_IRWXU | S_IRWXG);
-						strcat(player.dump_filename, "/");
-						strcat(player.dump_filename, playlist->album);
-						mkdir(player.dump_filename, S_IRWXU | S_IRWXG);
-						strcat(player.dump_filename, "/");
-						strcat(player.dump_filename, playlist->title);
+						prepare_dump_name(player.dump_filename, playlist);
+
+						/* Setup dump handle. If we can read the file,
+						 * then it already exists so don't re-write. */
+						if (access(player.dump_filename, R_OK) != 0) {
+							player.dump_handle = fopen(player.dump_filename, "w");
+							BarUiMsg(MSG_INFO, "Will dump song...\n");
+						} else {
+							player.dump_handle = NULL;
+							BarUiMsg(MSG_INFO, "Dump file found, will not dump!\n");
+						}
 			
 						/* throw event */
 						BarUiStartEventCmd (&settings, "songstart", curStation,
